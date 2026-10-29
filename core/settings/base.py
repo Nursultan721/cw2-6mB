@@ -8,14 +8,33 @@ load_dotenv()
 
 BASE_DIR = Path(__file__).resolve().parent.parent.parent
 
-SECRET_KEY = os.environ.get('SECRET_KEY')
+SECRET_KEY = os.environ.get('SECRET_KEY', 'django-insecure-change-me-super-secret-key-cw2')
+DEBUG = os.getenv("DEBUG", "True").lower() == "true"
 
-IS_PRODUCTION = os.getenv("PRODUCTION", "False").lower() == "true"
+ALLOWED_HOSTS = ["*"]
+CORS_ALLOW_ALL_ORIGINS = True
 
-if IS_PRODUCTION:
-    from core.settings.production import *
+POSTGRES_DB = os.environ.get("POSTGRES_DB")
+POSTGRES_HOST = os.environ.get("POSTGRES_HOST")
+
+if POSTGRES_DB and POSTGRES_HOST:
+    DATABASES = {
+        'default': {
+            'ENGINE': 'django.db.backends.postgresql',
+            'NAME': POSTGRES_DB,
+            'USER': os.environ.get("POSTGRES_USER", "myuser"),
+            'PASSWORD': os.environ.get("POSTGRES_PASSWORD", "mypassword"),
+            'HOST': POSTGRES_HOST,
+            'PORT': os.environ.get("POSTGRES_PORT", "5432"),
+        }
+    }
 else:
-    from core.settings.development import *
+    DATABASES = {
+        'default': {
+            'ENGINE': 'django.db.backends.sqlite3',
+            'NAME': BASE_DIR / 'db.sqlite3',
+        }
+    }
 
 THEME_APPS = [
     'jazzmin',
@@ -81,8 +100,6 @@ TEMPLATES = [
 
 WSGI_APPLICATION = 'core.wsgi.application'
 
-
-
 AUTH_PASSWORD_VALIDATORS = [
     {
         'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator',
@@ -98,17 +115,12 @@ AUTH_PASSWORD_VALIDATORS = [
     },
 ]
 
-
 LANGUAGE_CODE = 'ru'
-
 TIME_ZONE = 'Asia/Bishkek'
-
 USE_I18N = True
-
 USE_TZ = True
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
-
 
 LANGUAGES = [
     ('ru', _('Russian')),
@@ -116,18 +128,14 @@ LANGUAGES = [
     ('en', _('English')),
 ]
 
-
 MODELTRANSLATION_DEFAULT_LANGUAGE = 'ru'
 MODELTRANSLATION_CUSTOM_FIELDS = ('CKEditor5Field',)
-
 
 MEDIA_URL = '/back_media/'
 MEDIA_ROOT = BASE_DIR / 'back_media/'
 
-
 STATIC_URL = '/back_static/'
 STATIC_ROOT = os.path.join(BASE_DIR, 'back_static')
-
 
 STORAGES = {
     "default": {
@@ -138,6 +146,31 @@ STORAGES = {
     },
 }
 
+REDIS_URL = os.getenv('REDIS_URL', 'redis://redis:6379/0')
+
+CACHES = {
+    "default": {
+        "BACKEND": "django_redis.cache.RedisCache",
+        "LOCATION": REDIS_URL,
+        "OPTIONS": {
+            "CLIENT_CLASS": "django_redis.client.DefaultClient",
+        }
+    }
+}
+
+CELERY_BROKER_URL = REDIS_URL
+CELERY_RESULT_BACKEND = REDIS_URL
+CELERY_ACCEPT_CONTENT = ['json']
+CELERY_TASK_SERIALIZER = 'json'
+CELERY_RESULT_SERIALIZER = 'json'
+CELERY_TIMEZONE = TIME_ZONE
+
+CELERY_BEAT_SCHEDULE = {
+    'clear-expired-cache-every-minute': {
+        'task': 'apps.testapp.tasks.clear_expired_cache_task',
+        'schedule': 60.0,
+    },
+}
 
 CKEDITOR_5_CONFIGS = {
     'extends': {
